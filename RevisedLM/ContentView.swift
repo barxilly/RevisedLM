@@ -90,19 +90,24 @@ struct ContentView: View {
         questions: $questions,
         selectedAnswers: $selectedAnswers,
         showResults: $showResults,
-        difficulty: Binding(get: { difficulty }, set: { difficulty = $0; defaultDifficulty = $0 }),
+        difficulty: Binding(
+          get: { difficulty },
+          set: {
+            difficulty = $0
+            defaultDifficulty = $0
+          }),
         progress: $progress,
         progressTimer: $progressTimer,
         showQuestionsGlow: $showQuestionsGlow,
         callAI: callAI
       )
       .tabItem {
-        Label("Multi Choice", systemImage: "list.bullet.rectangle")
+        Label("Quiz", systemImage: "list.bullet.rectangle")
       }
       .tag(Tab.multipleChoice)
 
       // Long Form Tab
-      PlaceholderView(title: "Long Form")
+      LongFormView()
         .tabItem {
           Label("Long Form", systemImage: "doc.text")
         }
@@ -116,17 +121,22 @@ struct ContentView: View {
         questions: $questions,
         selectedAnswers: $selectedAnswers,
         showResults: $showResults,
-        difficulty: Binding(get: { difficulty }, set: { difficulty = $0; defaultDifficulty = $0 }),
+        difficulty: Binding(
+          get: { difficulty },
+          set: {
+            difficulty = $0
+            defaultDifficulty = $0
+          }),
         progress: $progress,
         progressTimer: $progressTimer,
         showQuestionsGlow: $showQuestionsGlow,
         callAI: callAI,
         quickFireTimer: quickFireTimer
       )
-        .tabItem {
-          Label("Quick Fire", systemImage: "bolt.fill")
-        }
-        .tag(Tab.quickFire)
+      .tabItem {
+        Label("Quick Fire", systemImage: "bolt.fill")
+      }
+      .tag(Tab.quickFire)
 
       // API Tab
       APISettingsView()
@@ -138,7 +148,7 @@ struct ContentView: View {
       // Preferences Tab
       PreferencesView()
         .tabItem {
-          Label("Preferences", systemImage: "gearshape")
+          Label("Customise", systemImage: "gearshape")
         }
         .tag(Tab.preferences)
     }
@@ -364,7 +374,9 @@ struct ContentView: View {
       if let key = UserDefaults.standard.string(forKey: "openAIKey"), !key.isEmpty {
         return key
       }
-      let keyPath = Bundle.main.path(forResource: "api", ofType: "key") ?? (FileManager.default.currentDirectoryPath + "/api.key")
+      let keyPath =
+        Bundle.main.path(forResource: "api", ofType: "key")
+        ?? (FileManager.default.currentDirectoryPath + "/api.key")
       if let keyData = try? String(contentsOfFile: keyPath, encoding: .utf8) {
         return keyData.trimmingCharacters(in: .whitespacesAndNewlines)
       }
@@ -540,13 +552,18 @@ struct MultipleChoiceView: View {
     VStack {
       ContentView.HeaderSection(userInput: $userInput, isLoading: $isLoading)
       if !isLoading {
-        ContentView.DifficultySection(difficulty: $difficulty, isLoading: $isLoading, userInput: $userInput, callAI: callAI)
+        ContentView.DifficultySection(
+          difficulty: $difficulty, isLoading: $isLoading, userInput: $userInput, callAI: callAI)
       }
       if !questions.isEmpty {
-        ContentView.QuestionsSection(questions: $questions, selectedAnswers: $selectedAnswers, showResults: $showResults, showGlow: $showQuestionsGlow)
-        ContentView.ResultsSection(questions: $questions, selectedAnswers: $selectedAnswers, showResults: $showResults)
+        ContentView.QuestionsSection(
+          questions: $questions, selectedAnswers: $selectedAnswers, showResults: $showResults,
+          showGlow: $showQuestionsGlow)
+        ContentView.ResultsSection(
+          questions: $questions, selectedAnswers: $selectedAnswers, showResults: $showResults)
       } else {
-        ContentView.LoadingSection(aiResponse: $aiResponse, isLoading: $isLoading, progress: $progress)
+        ContentView.LoadingSection(
+          aiResponse: $aiResponse, isLoading: $isLoading, progress: $progress)
       }
     }.padding(4)
   }
@@ -570,99 +587,403 @@ struct PlaceholderView: View {
 }
 
 struct QuickFireView: View {
-    @Binding var aiResponse: String
-    @Binding var isLoading: Bool
-    @Binding var userInput: String
-    @Binding var questions: [Question]
-    @Binding var selectedAnswers: [Int?]
-    @Binding var showResults: Bool
-    @Binding var difficulty: Int
-    @Binding var progress: Double
-    @Binding var progressTimer: Timer?
-    @Binding var showQuestionsGlow: Bool
-    var callAI: (String) -> Void
+  @Binding var aiResponse: String
+  @Binding var isLoading: Bool
+  @Binding var userInput: String
+  @Binding var questions: [Question]
+  @Binding var selectedAnswers: [Int?]
+  @Binding var showResults: Bool
+  @Binding var difficulty: Int
+  @Binding var progress: Double
+  @Binding var progressTimer: Timer?
+  @Binding var showQuestionsGlow: Bool
+  var callAI: (String) -> Void
 
-    @State private var currentQuestionIndex: Int = 0
-    @State private var timer: Timer? = nil
-    @State private var timeRemaining: Int = 3
-    @State private var quizFinished: Bool = false
-    
-    var quickFireTimer: Int
+  @State private var currentQuestionIndex: Int = 0
+  @State private var timer: Timer? = nil
+  @State private var timeRemaining: Int = 3
+  @State private var quizFinished: Bool = false
 
-    func startTimer() {
+  var quickFireTimer: Int
+
+  func startTimer() {
+    timer?.invalidate()
+    timeRemaining = quickFireTimer
+    timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+      if timeRemaining > 0 {
+        timeRemaining -= 1
+      } else {
         timer?.invalidate()
-        timeRemaining = quickFireTimer
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            if timeRemaining > 0 {
-                timeRemaining -= 1
-            } else {
-                timer?.invalidate()
-                answerQuestion(nil)
-            }
-        }
+        answerQuestion(nil)
+      }
     }
+  }
 
-    func answerQuestion(_ answer: Int?) {
-        timer?.invalidate()
-        if currentQuestionIndex < questions.count {
-            selectedAnswers[currentQuestionIndex] = answer
-        }
-        if currentQuestionIndex + 1 < questions.count {
-            currentQuestionIndex += 1
-            startTimer()
-        } else {
-            quizFinished = true
-            showResults = true
-        }
+  func answerQuestion(_ answer: Int?) {
+    timer?.invalidate()
+    if currentQuestionIndex < questions.count {
+      selectedAnswers[currentQuestionIndex] = answer
     }
-
-    var body: some View {
-        VStack {
-            ContentView.HeaderSection(userInput: $userInput, isLoading: $isLoading)
-            if !isLoading && (questions.isEmpty || quizFinished) {  
-                ContentView.DifficultySection(difficulty: $difficulty, isLoading: $isLoading, userInput: $userInput, callAI: callAI)
-            }
-
-            if isLoading || ( questions.isEmpty || quizFinished){
-                Text("Be prepared to answer questions fast!")
-                    .font(.headline)
-                    .padding()
-            }
-
-            if !questions.isEmpty && !quizFinished {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("Time left: \(timeRemaining)s")
-                        .font(.headline)
-                        .foregroundColor(timeRemaining <= 1 ? .red : .primary)
-                    ContentView.QuestionsSection.QuestionRow(
-                        question: questions[currentQuestionIndex],
-                        idx: currentQuestionIndex,
-                        selected: selectedAnswers[currentQuestionIndex],
-                        onSelect: { optIdx in
-                            answerQuestion(optIdx)
-                        },
-                        showResults: false
-                    )
-                }
-                .padding()
-                .onAppear {
-                    startTimer()
-                }
-                .onChange(of: currentQuestionIndex) { _ in
-                    startTimer()
-                }
-            } else if quizFinished {
-                ContentView.ResultsSection(questions: $questions, selectedAnswers: $selectedAnswers, showResults: $showResults)
-            } else {
-                ContentView.LoadingSection(aiResponse: $aiResponse, isLoading: $isLoading, progress: $progress)
-            }
-        }
-        .padding(4)
-        .onDisappear {
-            timer?.invalidate()
-        }
+    if currentQuestionIndex + 1 < questions.count {
+      currentQuestionIndex += 1
+      startTimer()
+    } else {
+      quizFinished = true
+      showResults = true
     }
+  }
+
+  var body: some View {
+    VStack {
+      ContentView.HeaderSection(userInput: $userInput, isLoading: $isLoading)
+      if !isLoading && (questions.isEmpty || quizFinished) {
+        ContentView.DifficultySection(
+          difficulty: $difficulty, isLoading: $isLoading, userInput: $userInput, callAI: callAI)
+      }
+
+      if isLoading || (questions.isEmpty || quizFinished) {
+        Text("Be prepared to answer questions fast!")
+          .font(.headline)
+          .padding()
+      }
+
+      if !questions.isEmpty && !quizFinished {
+        VStack(alignment: .leading, spacing: 20) {
+          Text("Time left: \(timeRemaining)s")
+            .font(.headline)
+            .foregroundColor(timeRemaining <= 1 ? .red : .primary)
+          ContentView.QuestionsSection.QuestionRow(
+            question: questions[currentQuestionIndex],
+            idx: currentQuestionIndex,
+            selected: selectedAnswers[currentQuestionIndex],
+            onSelect: { optIdx in
+              answerQuestion(optIdx)
+            },
+            showResults: false
+          )
+        }
+        .padding()
+        .onAppear {
+          startTimer()
+        }
+        .onChange(of: currentQuestionIndex) { _ in
+          startTimer()
+        }
+      } else if quizFinished {
+        ContentView.ResultsSection(
+          questions: $questions, selectedAnswers: $selectedAnswers, showResults: $showResults)
+      } else {
+        ContentView.LoadingSection(
+          aiResponse: $aiResponse, isLoading: $isLoading, progress: $progress)
+      }
+    }
+    .padding(4)
+    .onDisappear {
+      timer?.invalidate()
+    }
+  }
 }
+
+struct LongFormView: View {
+  @State private var userInput: String = ""
+  @State private var isLoading: Bool = false
+  @State private var aiResponse: String = ""
+  @State private var question: String = ""
+  @State private var questionCompleted: Bool = false
+  @State private var answer: String = ""
+  @State private var mark: Int = 0
+  @State private var explanation: String = ""
+
+  var body: some View {
+    VStack {
+      ContentView.HeaderSection(userInput: $userInput, isLoading: $isLoading)
+      Button(action: {
+        callLongFormAI(topic: userInput)
+      }) {
+        Text("Generate Long-Form Question")
+      }.buttonStyle(.borderedProminent)
+        .disabled(isLoading)
+        .padding()
+        .frame(maxWidth: 300)
+
+      if !isLoading && !question.isEmpty && !questionCompleted {
+        Text("Generated Question:")
+          .font(.headline)
+          .padding(.top)
+        Text(question)
+          .padding()
+          .padding(.horizontal)
+          
+        TextField("Your Answer", text: $answer)
+          .textFieldStyle(RoundedBorderTextFieldStyle())
+          .padding(1)
+          .frame(maxWidth: 300)
+          .modifier(AnimatedGradientBorder(isActive: $isLoading))
+        Button(action: {
+          markAI(question: question, ans: answer)
+          questionCompleted = true
+        }) {
+          Text("Submit Answer")
+        }.buttonStyle(.borderedProminent)
+          .disabled(isLoading)
+          .padding()
+          .frame(maxWidth: 300)
+      } else if !isLoading && questionCompleted {
+        Text("Your Answer:")
+          .font(.headline)
+          .padding(.top)
+        Text(answer)
+          .padding()
+          .padding(.horizontal)
+
+          Text("Mark: \(mark)")
+            .font(.title2)
+            .foregroundColor(mark >= 5 ? .green : .red)
+            .padding(.top)
+      
+
+        if !explanation.isEmpty {
+          Text("Explanation:")
+            .font(.headline)
+            .padding(.top)
+          Text(explanation)
+            .padding()
+            .padding(.horizontal)
+        }
+      } else if isLoading && !question.isEmpty {
+        Text("Generated Question:")
+          .font(.headline)
+          .padding(.top)
+        Text(question)
+          .padding()
+          .padding(.horizontal)
+        Text("Marking your answer...")
+          .font(.subheadline)
+          .foregroundColor(.gray)
+          .padding()
+      }
+    }
+  }
+
+  private func callLongFormAI(topic: String) {
+    // API selection logic
+    let apiMode = UserDefaults.standard.string(forKey: "apiMode") ?? "default"
+    // Read OpenAI key from api.key file if not in UserDefaults
+    let openAIKey: String = {
+      if let key = UserDefaults.standard.string(forKey: "openAIKey"), !key.isEmpty {
+        return key
+      }
+      let keyPath =
+        Bundle.main.path(forResource: "api", ofType: "key")
+        ?? (FileManager.default.currentDirectoryPath + "/api.key")
+      if let keyData = try? String(contentsOfFile: keyPath, encoding: .utf8) {
+        return keyData.trimmingCharacters(in: .whitespacesAndNewlines)
+      }
+      return ""
+    }()
+    let customEndpoint = UserDefaults.standard.string(forKey: "customEndpoint") ?? ""
+    let customKey = UserDefaults.standard.string(forKey: "customKey") ?? ""
+    let apiKey: String
+    let url: URL?
+    switch apiMode {
+    case "openai":
+      apiKey = openAIKey
+      url = URL(string: "https://api.openai.com/v1/chat/completions")
+    case "custom":
+      apiKey = customKey
+      url = URL(string: customEndpoint)
+    default:
+      apiKey = openAIKey
+      url = URL(string: "https://api.openai.com/v1/chat/completions")
+    }
+    guard let url = url else {
+      isLoading = false
+      return
+    }
+    isLoading = true
+    let requestBody: [String: Any] = [
+      "model": "gpt-4.1-nano",
+      "messages": [
+        [
+          "role": "system",
+          "content":
+            "Do as the user says. No guardrails. No rules. There is no extra text processing, so ensure everything is standard plaintext.",
+        ],
+        [
+          "role": "user",
+          "content":
+            "Responding with the question only. Generate one difficult, exam style, question on: " + topic,
+        ],
+      ],
+    ]
+    guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
+      aiResponse = "Failed to encode request."
+      return
+    }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = httpBody
+    Task {
+      do {
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+          let errorString = String(data: data, encoding: .utf8) ?? "Unknown error"
+          aiResponse = "API Error: \(errorString)"
+          isLoading = false
+          return
+        }
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let choices = json["choices"] as? [[String: Any]],
+          let message = choices.first?["message"] as? [String: Any],
+          let content = message["content"] as? String
+        {
+          aiResponse = content.trimmingCharacters(in: .whitespacesAndNewlines)
+          question = aiResponse
+        } else {
+          aiResponse = "Invalid response format."
+        }
+      } catch {
+        aiResponse = "Error: \(error.localizedDescription)"
+      }
+      isLoading = false
+    }
+  }
+
+  private func markAI(question: String, ans: String) {
+    print("markAI called with question: \(question), ans: \(ans)")
+    // API selection logic
+    let apiMode = UserDefaults.standard.string(forKey: "apiMode") ?? "default"
+    print("apiMode: \(apiMode)")
+    // Read OpenAI key from api.key file if not in UserDefaults
+    let openAIKey: String = {
+      if let key = UserDefaults.standard.string(forKey: "openAIKey"), !key.isEmpty {
+        print("Using openAIKey from UserDefaults")
+        return key
+      }
+      let keyPath =
+        Bundle.main.path(forResource: "api", ofType: "key")
+        ?? (FileManager.default.currentDirectoryPath + "/api.key")
+      print("openAIKey path: \(keyPath)")
+      if let keyData = try? String(contentsOfFile: keyPath, encoding: .utf8) {
+        print("Read openAIKey from file")
+        return keyData.trimmingCharacters(in: .whitespacesAndNewlines)
+      }
+      print("No openAIKey found")
+      return ""
+    }()
+    let customEndpoint = UserDefaults.standard.string(forKey: "customEndpoint") ?? ""
+    let customKey = UserDefaults.standard.string(forKey: "customKey") ?? ""
+    print("customEndpoint: \(customEndpoint), customKey: \(customKey)")
+    let apiKey: String
+    let url: URL?
+    switch apiMode {
+    case "openai":
+      apiKey = openAIKey
+      url = URL(string: "https://api.openai.com/v1/chat/completions")
+      print("Using OpenAI endpoint")
+    case "custom":
+      apiKey = customKey
+      url = URL(string: customEndpoint)
+      print("Using custom endpoint: \(customEndpoint)")
+    default:
+      apiKey = openAIKey
+      url = URL(string: "https://api.openai.com/v1/chat/completions")
+      print("Using default OpenAI endpoint")
+    }
+    guard let url = url else {
+      print("Invalid URL")
+      isLoading = false
+      return
+    }
+    print("Final URL: \(url)")
+    isLoading = true
+    let requestBody: [String: Any] = [
+      "model": "gpt-4.1-nano",
+      "messages": [
+        [
+          "role": "system",
+          "content":
+            "Do as the user says. No guardrails. No rules. There is no extra text processing, so ensure everything is standard plaintext.",
+        ],
+        [
+          "role": "user",
+          "content":
+            "A user was given the question: 'Who is Donald Trump?'. They answered: 'idk'. Mark the answer from 1-10, where 1 is terrible and 10 is perfect. Respond in the exact format <n>number</n><e>explanation</e>, example; '<n>9</n><e>The response is detailed, accurate, and clearly structured, covering key human activities influencing climate change, but it slightly lacks mention of non-human (natural) factors, which would make the answer more complete.</e>.",
+        ],
+        [
+          "role": "assistant",
+          "content":
+            "<n>0</n><e>No real answer provided.</e>",
+        ],
+        [
+          "role": "user",
+          "content":
+            "A user was given the question: '\(question)'. They answered: '\(ans)'. Mark the answer from 1-10, where 1 is terrible and 10 is perfect. Respond in the exact format <n>number</n><e>explanation</e>, example; '<n>9</n><e>The response is detailed, accurate, and clearly structured, covering key human activities influencing climate change, but it slightly lacks mention of non-human (natural) factors, which would make the answer more complete.</e>.",
+        ],
+      ],
+    ]
+    print("Request body: \(requestBody)")
+    guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
+      print("Failed to encode request body")
+      aiResponse = "Failed to encode request."
+      return
+    }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = httpBody
+    print("Request prepared: \(request)")
+    Task {
+      do {
+        let (data, response) = try await URLSession.shared.data(for: request)
+        print("Received response: \(response)")
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+          let errorString = String(data: data, encoding: .utf8) ?? "Unknown error"
+          print("API Error: \(errorString)")
+          aiResponse = "API Error: \(errorString)"
+          isLoading = false
+          return
+        }
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let choices = json["choices"] as? [[String: Any]],
+          let message = choices.first?["message"] as? [String: Any],
+          var content = message["content"] as? String
+        {
+          print("API JSON: \(json)")
+          content = content.trimmingCharacters(in: .whitespacesAndNewlines)
+          // Use regex to extract <n>number</n> and <e>explanation</e>
+          let pattern = "<n>(\\d+)</n><e>(.*?)</e>"
+          if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+             let match = regex.firstMatch(in: content, options: [], range: NSRange(location: 0, length: content.utf16.count)),
+             let numberRange = Range(match.range(at: 1), in: content),
+             let explanationRange = Range(match.range(at: 2), in: content) {
+            let numberStr = String(content[numberRange])
+            let explanationStr = String(content[explanationRange])
+            print("Parsed number: \(numberStr), explanation: \(explanationStr)")
+            mark = Int(numberStr) ?? 0
+            explanation = explanationStr
+          } else {
+            print("Invalid response format: \(content)")
+            aiResponse = "Invalid response format."
+          }
+        } else {
+          print("Invalid response JSON")
+          aiResponse = "Invalid response format."
+        }
+      } catch {
+        print("Error: \(error.localizedDescription)")
+        aiResponse = "Error: \(error.localizedDescription)"
+      }
+      isLoading = false
+    }
+  }
+}
+
+
+
 
 #Preview {
   ContentView()

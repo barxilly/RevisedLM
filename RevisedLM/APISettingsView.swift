@@ -5,6 +5,7 @@ struct APISettingsView: View {
     @AppStorage("openAIKey") private var openAIKey: String = ""
     @AppStorage("customEndpoint") private var customEndpoint: String = ""
     @AppStorage("customKey") private var customKey: String = ""
+    @AppStorage("customModel") private var customModel: String = "gpt-4.1-nano"
 
     var body: some View {
         Form {
@@ -19,6 +20,12 @@ struct APISettingsView: View {
             if apiMode == "openai" {
                 Section(header: Text("OpenAI API Key")) {
                     SecureField("sk-...", text: $openAIKey)
+                    if !openAIKey.isEmpty {
+                        TextField("Model", text: $customModel)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .disableAutocorrection(true)
+                            .autocapitalization(.none)
+                    }
                 }
             } else if apiMode == "custom" {
                 Section(header: Text("Custom Endpoint")) {
